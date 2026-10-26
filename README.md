@@ -4,6 +4,8 @@
 
 Everything lives in one file: `index.html`. No build step, no dependencies, no server required.
 
+**Live demo:** https://godlikeswan.github.io/stereo_gen/
+
 ## Running it
 
 Open `index.html` in a browser. No build step, no dependencies.
