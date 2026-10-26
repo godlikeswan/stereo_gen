@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stereo Image Generator</title>
+<style>
+  :root {
+    --bg: #14161a;
+    --panel: #1e2127;
+    --border: #2e333c;
+    --text: #e6e9ef;
+    --muted: #9aa3b2;
+    --accent: #4c8dff;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  h1 {
+    margin: 12px 0 6px;
+    font-size: 28px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .subtitle {
+    margin: 0 0 40px;
+    font-size: 14px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .layout {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 20px;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  .controls {
+    order: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 260px;
+    max-width: 100%;
+    padding: 18px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .field .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .field .row output {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  input[type="text"],
+  input[type="number"] {
+    width: 100%;
+    padding: 8px 10px;
+    background: #12141a;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font: inherit;
+  }
+
+  input[type="text"]:focus,
+  input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+  }
+
+  .checkbox {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .checkbox label {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  button {
+    padding: 9px 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  button:hover {
+    filter: brightness(1.1);
+  }
+
+  button.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  button.secondary:hover {
+    border-color: var(--accent);
+    filter: none;
+  }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .actions button {
+    flex: 1;
+  }
+
+  .stage {
+    order: 1;
+    position: relative;
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .stage-button {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 15px;
+    line-height: 1;
+    opacity: 0.55;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .stage-button:hover {
+    opacity: 0.9;
+    filter: none;
+  }
+
+  .stage-button:focus-visible {
+    opacity: 0.9;
+  }
+
+  canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    image-rendering: pixelated;
+  }
+
+  .stage:fullscreen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: #000;
+  }
+
+  .zoom-bar {
+    display: none;
+  }
+
+  .stage:fullscreen canvas {
+    width: auto;
+    height: auto;
+    flex: none;
+    max-width: none;
+    max-height: none;
+    border: none;
+    border-radius: 0;
+  }
+
+  .stage:fullscreen .zoom-bar {
+    position: absolute;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: rgba(30, 33, 39, 0.85);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+  }
+
+  .stage:fullscreen .zoom-bar label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .stage:fullscreen .zoom-bar input[type="range"] {
+    width: 180px;
+  }
+
+  .stage:fullscreen .zoom-bar output {
+    min-width: 42px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .stage:fullscreen .stage-button {
+    opacity: 0.3;
+  }
+
+  @media (max-width: 1040px) {
+    body {
+      padding: 16px 12px;
+    }
+
+    h1 {
+      font-size: 22px;
+    }
+
+    .subtitle {
+      margin-bottom: 24px;
+    }
+
+    .layout {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+    }
+
+    .controls {
+      width: 100%;
+    }
+
+    .stage {
+      order: 0;
+    }
+  }
+</style>
+</head>
+<body>
+  <h1>Stereo Image Generator</h1>
+  <p class="subtitle">Random dot stereograms</p>
+
+  <div class="layout">
+    <div class="controls">
+      <div class="field">
+        <div class="row"><label for="text">Hidden text</label></div>
+        <input type="text" id="text" value="HELLO" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <div class="row">
+          <label for="tile">Pattern width</label>
+          <output id="tileValue">120</output>
+        </div>
+        <input type="range" id="tile" min="40" max="300" step="1" value="120">
+      </div>
+
+      <div class="field">
+        <div class="row">
+          <label for="dot">Dot size</label>
+          <output id="dotValue">5</output>
+        </div>
+        <input type="range" id="dot" min="1" max="20" step="1" value="5">
+      </div>
+
+      <div class="field">
+        <div class="row">
+          <label for="seed">Seed</label>
+        </div>
+        <input type="number" id="seed" value="1" min="0" step="1">
+      </div>
+
+      <div class="field">
+        <div class="row">
+          <label for="shift">Shift &amp; depth</label>
+          <output id="shiftValue">0</output>
+        </div>
+        <input type="range" id="shift" min="-120" max="120" step="1" value="0">
+      </div>
+
+      <div class="field checkbox">
+        <input type="checkbox" id="showSplit">
+        <label for="showSplit">Show split line</label>
+      </div>
+
+      <div class="field checkbox">
+        <input type="checkbox" id="invert">
+        <label for="invert">Invert colors</label>
+      </div>
+
+      <div class="actions">
+        <button id="copy" class="secondary">Copy</button>
+        <button id="download">Download</button>
+      </div>
+    </div>
+
+    <div class="stage">
+      <canvas id="canvas" width="720" height="480"></canvas>
+      <div class="zoom-bar">
+        <label for="zoom">Zoom</label>
+        <input type="range" id="zoom" min="10" max="125" step="1" value="100">
+        <output id="zoomValue">100%</output>
+      </div>
+      <button id="fullscreen" class="stage-button" title="Full screen" aria-label="Full screen">&#x26F6;</button>
+    </div>
+  </div>
+
+<script>
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  const splitX = Math.round(canvas.width / 2);
+
+  const tileInput = document.getElementById('tile');
+  const dotInput = document.getElementById('dot');
+  const invertInput = document.getElementById('invert');
+  const showSplitInput = document.getElementById('showSplit');
+
+  function syncOutputs() {
+    document.getElementById('tileValue').textContent = tileInput.value;
+    document.getElementById('dotValue').textContent = dotInput.value;
+    document.getElementById('shiftValue').textContent = shiftInput.value;
+  }
+
+  const halfWidth = canvas.width - splitX;
+  const base = new Uint8ClampedArray(halfWidth * canvas.height);
+  const right = new Uint8ClampedArray(halfWidth * canvas.height);
+
+  const seedInput = document.getElementById('seed');
+
+  function makeRandom(seed) {
+    let state = seed >>> 0;
+    return function random() {
+      state = (state + 0x6d2b79f5) >>> 0;
+      let t = state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  let random = makeRandom(1);
+
+  function randomShade() {
+    return random() < 0.5 ? 0 : 255;
+  }
+
+  const shiftInput = document.getElementById('shift');
+  const textInput = document.getElementById('text');
+
+  const maskCanvas = document.createElement('canvas');
+  maskCanvas.width = canvas.width;
+  maskCanvas.height = canvas.height;
+  const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
+
+  const mask = new Uint8ClampedArray(canvas.width * canvas.height);
+  const blur = new Uint8ClampedArray(canvas.width * canvas.height);
+
+  function makeTextMask() {
+    const text = textInput.value.trim() || ' ';
+
+    maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+    maskCtx.fillStyle = '#fff';
+    maskCtx.textAlign = 'center';
+    maskCtx.textBaseline = 'middle';
+
+    const maxWidth = halfWidth * 0.9;
+    let size = Math.round(canvas.height * 0.5);
+    maskCtx.font = `bold ${size}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+
+    const measured = maskCtx.measureText(text).width;
+    if (measured > maxWidth) {
+      size = Math.max(8, Math.floor(size * (maxWidth / measured)));
+      maskCtx.font = `bold ${size}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+    }
+
+    maskCtx.fillText(text, splitX + halfWidth / 2, canvas.height / 2);
+
+    const pixels = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height).data;
+    for (let i = 0, p = 0; i < mask.length; i++, p += 4) {
+      mask[i] = pixels[p] > 127 ? 1 : 0;
+    }
+  }
+
+  function blurMask(radius) {
+    const width = canvas.width;
+    const height = canvas.height;
+
+    for (let y = 0; y < height; y++) {
+      let sum = 0;
+      for (let x = -radius; x <= radius; x++) {
+        sum += mask[y * width + Math.min(width - 1, Math.max(0, x))];
+      }
+      for (let x = 0; x < width; x++) {
+        blur[y * width + x] = sum / (radius * 2 + 1);
+        const add = mask[y * width + Math.min(width - 1, x + radius + 1)];
+        const drop = mask[y * width + Math.max(0, x - radius)];
+        sum += add - drop;
+      }
+    }
+
+    for (let x = 0; x < width; x++) {
+      let sum = 0;
+      for (let y = -radius; y <= radius; y++) {
+        sum += blur[Math.min(height - 1, Math.max(0, y)) * width + x];
+      }
+      for (let y = 0; y < height; y++) {
+        mask[y * width + x] = sum / (radius * 2 + 1);
+        const add = blur[Math.min(height - 1, y + radius + 1) * width + x];
+        const drop = blur[Math.max(0, y - radius) * width + x];
+        sum += add - drop;
+      }
+    }
+  }
+
+  function applyDepth() {
+    const amount = Number(shiftInput.value);
+    const width = canvas.width;
+
+    for (let y = 0; y < canvas.height; y++) {
+      const row = y * halfWidth;
+
+      for (let x = 0; x < halfWidth; x++) {
+        const probe = splitX + x - amount;
+        const mx = ((probe % width) + width) % width;
+        const depth = Math.round(mask[y * width + mx] * amount);
+        const src = ((x - depth) % halfWidth + halfWidth) % halfWidth;
+        right[row + x] = base[row + src];
+      }
+    }
+  }
+
+  function paintHalf(source, offsetX, invert) {
+    const patch = ctx.createImageData(halfWidth, canvas.height);
+    const data = patch.data;
+
+    for (let y = 0; y < canvas.height; y++) {
+      for (let x = 0; x < halfWidth; x++) {
+        const value = source[y * halfWidth + x];
+        const i = (y * halfWidth + x) * 4;
+        data[i] = data[i + 1] = data[i + 2] = invert ? 255 - value : value;
+        data[i + 3] = 255;
+      }
+    }
+
+    ctx.putImageData(patch, offsetX, 0);
+  }
+
+  function drawNoise() {
+    const invert = invertInput.checked;
+    paintHalf(base, 0, invert);
+    paintHalf(right, splitX, invert);
+  }
+
+  function drawSplitLine() {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 80, 80, 0.9)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ctx.moveTo(splitX + 0.5, 0);
+    ctx.lineTo(splitX + 0.5, canvas.height);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function buildPattern() {
+    random = makeRandom(Number(seedInput.value));
+    for (let i = 0; i < base.length; i++) {
+      base[i] = randomShade();
+    }
+    right.set(base);
+
+    makeTextMask();
+    blurMask(6);
+    applyDepth();
+  }
+
+  function drawPlaceholder() {
+    drawNoise();
+    if (showSplitInput.checked) drawSplitLine();
+  }
+
+  tileInput.addEventListener('input', syncOutputs);
+  dotInput.addEventListener('input', syncOutputs);
+
+  function rebuild() {
+    buildPattern();
+    drawPlaceholder();
+  }
+
+  shiftInput.addEventListener('input', () => {
+    syncOutputs();
+    applyDepth();
+    drawPlaceholder();
+  });
+
+  seedInput.addEventListener('input', rebuild);
+  textInput.addEventListener('input', rebuild);
+
+  const stage = document.querySelector('.stage');
+  const fullscreenButton = document.getElementById('fullscreen');
+
+  fullscreenButton.addEventListener('click', async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await stage.requestFullscreen();
+      }
+    } catch {
+      fullscreenButton.textContent = '!';
+      setTimeout(() => { fullscreenButton.textContent = '\u26F6'; }, 1500);
+    }
+  });
+
+  const zoomInput = document.getElementById('zoom');
+  const zoomValue = document.getElementById('zoomValue');
+
+  function fitScale() {
+    return Math.min(window.innerWidth / canvas.width, window.innerHeight / canvas.height);
+  }
+
+  function applyZoom() {
+    zoomValue.textContent = `${zoomInput.value}%`;
+
+    if (!document.fullscreenElement) {
+      canvas.style.width = '';
+      canvas.style.height = '';
+      return;
+    }
+
+    const fit = fitScale();
+    const scale = fit * (Number(zoomInput.value) / 100);
+    canvas.style.width = `${Math.round(canvas.width * scale)}px`;
+    canvas.style.height = `${Math.round(canvas.height * scale)}px`;
+  }
+
+  zoomInput.addEventListener('input', applyZoom);
+
+  document.addEventListener('fullscreenchange', () => {
+    const exit = Boolean(document.fullscreenElement);
+    fullscreenButton.textContent = exit ? '\u2715' : '\u26F6';
+    fullscreenButton.title = exit ? 'Exit full screen' : 'Full screen';
+    fullscreenButton.setAttribute('aria-label', fullscreenButton.title);
+
+    applyZoom();
+    drawPlaceholder();
+  });
+
+  window.addEventListener('resize', () => {
+    if (document.fullscreenElement) applyZoom();
+  });
+
+  invertInput.addEventListener('change', drawPlaceholder);
+  showSplitInput.addEventListener('change', drawPlaceholder);
+
+  document.getElementById('download').addEventListener('click', () => {
+    const link = document.createElement('a');
+    link.download = 'stereogram.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  document.getElementById('copy').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    const original = 'Copy';
+    try {
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('Canvas could not be encoded');
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      button.textContent = 'Copied';
+    } catch {
+      button.textContent = 'Failed';
+    }
+    setTimeout(() => { button.textContent = original; }, 1500);
+  });
+
+  syncOutputs();
+  buildPattern();
+  drawPlaceholder();
+</script>
+</body>
+</html>
